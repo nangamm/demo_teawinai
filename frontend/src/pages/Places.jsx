@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { MapPin, Star, Search, Filter } from 'lucide-react'
+import { MapPin, Star, Search, Filter, ChevronLeft, ChevronRight } from 'lucide-react'
 import { placesAPI, categoriesAPI } from '@/services/api'
 import { buildImageUrl } from '@/utils/image'
 import toast from 'react-hot-toast'
@@ -30,6 +30,8 @@ export function Places() {
   const [places, setPlaces] = useState([])
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
   const [filters, setFilters] = useState({
     category: searchParams.get('category') || '',
     province: searchParams.get('province') || '',
@@ -54,20 +56,24 @@ export function Places() {
       if (filters.category) params.category = filters.category
       if (filters.search) params.search = filters.search
       if (filters.province) params.province = filters.province
+      params.page = currentPage
+      params.limit = 9
       const response = await placesAPI.getPlaces(params)
       setPlaces(response.data.data || [])
+      setTotalPages(response.data.pagination?.pages || 1)
     } catch {
       toast.error('ไม่สามารถดึงข้อมูลสถานที่ได้')
     } finally {
       setLoading(false)
     }
-  }, [filters])
+  }, [filters, currentPage])
 
   useEffect(() => { fetchPlaces() }, [fetchPlaces])
 
   const handleFilterChange = (key, value) => {
     const newFilters = { ...filters, [key]: value }
     setFilters(newFilters)
+    setCurrentPage(1)
     const params = new URLSearchParams()
     Object.entries(newFilters).forEach(([k, v]) => { if (v) params.set(k, v) })
     setSearchParams(params)
@@ -272,6 +278,34 @@ export function Places() {
             <div className="places-empty-title">ไม่พบสถานที่ท่องเที่ยว</div>
             <div className="places-empty-sub">ลองปรับเปลี่ยนตัวกรองหรือคำค้นหา</div>
           </div>
+        )}
+
+        {totalPages > 1 && (
+          <nav className="places-pagination" aria-label="เปลี่ยนหน้าสถานที่ท่องเที่ยว">
+            <button
+              type="button"
+              className="places-pagination-btn"
+              onClick={() => setCurrentPage(page => page - 1)}
+              disabled={currentPage === 1 || loading}
+              aria-label="หน้าก่อนหน้า"
+            >
+              <ChevronLeft />
+              ก่อนหน้า
+            </button>
+            <span className="places-pagination-status">
+              หน้า {currentPage} / {totalPages}
+            </span>
+            <button
+              type="button"
+              className="places-pagination-btn"
+              onClick={() => setCurrentPage(page => page + 1)}
+              disabled={currentPage === totalPages || loading}
+              aria-label="หน้าถัดไป"
+            >
+              ถัดไป
+              <ChevronRight />
+            </button>
+          </nav>
         )}
 
       </div>
